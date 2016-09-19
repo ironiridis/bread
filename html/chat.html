@@ -1,0 +1,179 @@
+<html>
+<head>
+<title>Support client demo</title>
+<style type="text/css">
+div#history {
+	overflow-y: auto;
+	height: 300px;
+}
+div#history > dl {
+	border-radius: 4px;
+	padding: 2px;
+	margin: 2px 0px;
+}
+div#entry {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+}
+div#entry > input {
+	flex-grow: 7;
+}
+div#entry > button {
+	flex-grow: 3;
+}
+dl.sent { background-color: #ceb; }
+dl.received { background-color: #ddf; }
+dt { font-weight: bold; }
+dl.event dd { font-style: italic; }
+</style>
+</head>
+<body>
+<div id="history">
+</div>
+<div id="entry">
+<input
+	type="text"
+	mozactionhint="send"
+	autocapitalize="sentences"
+	autocomplete="off"
+	autocorrect="on"
+	autofocus="true"
+	inputmode="latin-prose"
+	maxlength="2048"
+	placeholder="Your Message"
+	id="messagebox" />
+<button id="send">Send</button>
+</div>
+<script type="text/javascript">
+var incr = 0;
+var typingrecently = false;
+var ws = null;
+var wspingwait = null;
+function localtime() {
+	var r = "" + (new Date().toLocaleTimeString());
+	return r;
+}
+function scrollto(e) {
+	if (e.scrollIntoView) {
+		try {
+			e.scrollIntoView({behavior: "smooth", block: "end"});
+			return;
+		} catch(x) {}
+		try {
+			e.scrollIntoView(false);
+			return;
+		} catch(x) {}
+	} else { console.log("element missng scrollIntoView"); }
+	incr++;
+	var anchor = document.createElement("a")
+	var anchorid = "tgt_" + incr;
+	anchor.id = anchorid;
+	anchor.textContent = "";
+	e.appendChild(anchor);
+	document.location.replace("#"+anchorid);
+	console.log("fallback ugly scroll behavior")
+}
+function log(source, classname, msg) {
+	var dl = document.createElement("dl");
+	dl.className = classname;
+	var dt = document.createElement("dt");
+	dt.textContent = source + " - " + localtime();
+	dl.appendChild(dt);
+	var dd = document.createElement("dd");
+	dd.textContent = msg;
+	dl.appendChild(dd);
+	
+	var h = document.getElementById("history");
+	h.appendChild(dl);
+	scrollto(dl);
+}
+function send(m) {
+	log("You", "sent", m)
+	document.getElementById("messagebox").value = "";
+	document.getElementById("messagebox").focus();
+	var o = { event: "message", message: m };
+	ws.send(JSON.stringify(o));
+}
+function signalTyping() {
+	if (typingrecently) { return; }
+	typingrecently = true;
+	window.setTimeout(function(){ typingrecently = false; }, 3000);
+	var o = { event: "typing" };
+	ws.send(JSON.stringify(o));
+}
+document.getElementById("messagebox").addEventListener("keydown", function(e) {
+	if (e.key == "Enter" || e.code == "Enter" || e.keyCode == 13) {
+		send(document.getElementById("messagebox").value);
+	} else {
+		signalTyping();
+	}
+});
+document.getElementById("send").addEventListener("click", function(e) {
+	send(document.getElementById("messagebox").value);
+});
+function online() {
+	log("You", "sent event", "Connected")
+	document.getElementById("messagebox").removeAttribute("disabled");
+	document.getElementById("messagebox").setAttribute("placeholder", "Your message");
+	document.getElementById("send").removeAttribute("disabled");
+}
+function offline() {
+	log("You", "sent event", "Disconnected")
+	document.getElementById("messagebox").setAttribute("disabled", "true");
+	document.getElementById("messagebox").setAttribute("placeholder", "Disconnected");
+	document.getElementById("send").setAttribute("disabled", "true");
+}
+function setupWS() {
+	try {
+		ws = new WebSocket("wss://waffle.pw/breadws/mspace");
+		ws.onopen = function(e) {
+			online();
+			ws.send(JSON.stringify({event: "hello"}));
+		}
+		ws.onclose = function(e) {
+			if (wspingwait) {
+				window.clearTimeout(wspingwait);
+			}
+			offline();
+		}
+		ws.onmessage = function(e) {
+			if (wspingwait) {
+				window.clearTimeout(wspingwait);
+			}
+			wspingwait = window.setTimeout(function(){
+				wspingwait = null;
+				ws.send(JSON.stringify({event: "ping"}));
+			}, 8000);
+		}
+	} catch(e) {
+		offline();
+		console.log(e)
+		log("System", "event", "Failed to set up connection to server.")
+		return;
+	}
+}
+setupWS();
+</script>
+<script type="text/javascript">
+function demo() {
+	incr++;
+	switch(incr) {
+		case 1: log("Pete Carlson", "received event", "Joined the conversation"); break;
+		case 2: log("You", "sent", "Hi, my Crestron is broken."); break;
+		case 3: log("Pete Carlson", "received", "I'm so sorry to hear that! Tell me about the company you're with, and the room the system is in."); break;
+		case 4: log("You", "sent", "My name is Anne, I'm with TCV. The system is in the Arena."); break;
+		case 5: log("Pete Carlson", "received", "Okay, I believe you have MCare, let me look that up..."); break;
+		case 6: log("Pete Carlson", "received", "Yep, MCare. You said this is in the Arena system? Tell me about the problem you're having. What doesn't work?"); break;
+		case 7: log("You", "sent", "Actually I talked to Keith pretty extentively about this. Is he available?"); break;
+		case 8: log("Pete Carlson", "received", "Yes he's in the office. Just a moment."); break;
+		case 9: log("Keith Gustafson", "received event", "Joined the conversation"); break;
+		case 10: log("Keith Gustafson", "received", "Hi Anne! You're having that projector problem again aren't you?"); break;
+		default: return;
+	}
+	window.setTimeout(demo, 1800);
+}
+if (document.location.hash == "#startdemo") { demo(); }
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+= Goals =
+
+When the server starts up:
+* Open an RTM stream https://api.slack.com/methods/rtm.start
+
+
+When a web user starts a new chat:
+* Generate a random string to build channel name (eg webchat_NA93UYB1)
+* Create a new private channel https://api.slack.com/methods/groups.create
+* Store "group id" to reference in the future
+* Set the purpose https://api.slack.com/methods/groups.setPurpose
+** This should show who the user identified themselves as, maybe some other summary data
+** Use Purpose rather than Topic because Purpose shows when browsing archives
+* Invite responder(s) to the channel https://api.slack.com/methods/groups.invite
+
+When a responder joins or leaves: via https://api.slack.com/events/message/group_join
+* Indicate as much to the user
+
+When a web user begins typing:
+* Indicate as much to the private channel https://api.slack.com/events/user_typing
+
+When a responder begins typing: via https://api.slack.com/events/user_typing
+* Indicate as much to the user
+
+When a user sends a message:
+* Post a new message to the channel https://api.slack.com/events/message
+
+When a responder sends a message: via https://api.slack.com/events/message
+* Indicate which responder typed what to the user
+
+When a web user disconnects:
+* Archive the private channel https://api.slack.com/methods/groups.archive
+
+
+
+= Stretch goals =
+
+When a web user starts a new chat:
+* Dynamically determine eligible responders by who is in #support https://api.slack.com/methods/channels.info
+* Check presence for responders to determine whether to invite https://api.slack.com/methods/users.getPresence
+** we want "presence: active"
+
+When a web user uploads a file:
+* Re-upload that file to the channel https://api.slack.com/methods/files.upload
