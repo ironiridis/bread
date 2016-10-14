@@ -83,7 +83,7 @@ function log(source, classname, msg) {
 	var dd = document.createElement("dd");
 	dd.textContent = msg;
 	dl.appendChild(dd);
-	
+
 	var h = document.getElementById("history");
 	h.appendChild(dl);
 	scrollto(dl);
@@ -124,6 +124,15 @@ function offline() {
 	document.getElementById("messagebox").setAttribute("placeholder", "Disconnected");
 	document.getElementById("send").setAttribute("disabled", "true");
 }
+function watchdogKick() {
+	if (wspingwait) {
+		window.clearTimeout(wspingwait);
+	}
+	wspingwait = window.setTimeout(function(){
+		wspingwait = null;
+		ws.send(JSON.stringify({event: "ping"}));
+	}, 8000);
+}
 function setupWS() {
 	try {
 		ws = new WebSocket("wss://waffle.pw/breadws/mspace");
@@ -132,19 +141,12 @@ function setupWS() {
 			ws.send(JSON.stringify({event: "hello"}));
 		}
 		ws.onclose = function(e) {
-			if (wspingwait) {
-				window.clearTimeout(wspingwait);
-			}
+			if (wspingwait) { window.clearTimeout(wspingwait); }
 			offline();
 		}
 		ws.onmessage = function(e) {
-			if (wspingwait) {
-				window.clearTimeout(wspingwait);
-			}
-			wspingwait = window.setTimeout(function(){
-				wspingwait = null;
-				ws.send(JSON.stringify({event: "ping"}));
-			}, 8000);
+			watchdogKick();
+			console.log(e);
 		}
 	} catch(e) {
 		offline();
