@@ -8,7 +8,7 @@ type Msg struct {
 }
 
 func slackGetChannel() (tx, rx chan *Msg, err error) {
-	r, err := slack.GroupCreate("bread")
+	r, err := slackAPI.GroupCreate("bread")
 	log.Printf("get group create result: %+v", r)
 	if err != nil {
 		return
