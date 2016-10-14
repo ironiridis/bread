@@ -40,7 +40,7 @@ func wsupgrader(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	//txch, err := slackGetChannel()
+	toSlack, fromSlack, err := slackGetChannel()
 	if err != nil {
 		log.Printf("Slack returned an error during a WS setup: %v", err)
 		return
@@ -56,6 +56,15 @@ func wsupgrader(w http.ResponseWriter, r *http.Request) {
 					S: "Server",
 					C: "system",
 					T: "timeout"})
+		case msg := <-fromSlack:
+			if msg == nil {
+				log.Println("Slack is gone with an active WS connection")
+				return
+			}
+			err = conn.WriteJSON(&WSMsgClientCommand{
+				S: msg.Source,
+				C: "received",
+				T: msg.Text})
 		case msg := <-rxch:
 			if msg == nil {
 				return
@@ -76,7 +85,7 @@ func wsupgrader(w http.ResponseWriter, r *http.Request) {
 			case "typing":
 				log.Println("not handling typing event: unimplemented")
 			case "message":
-				log.Println("not handling message event: unimplemented")
+				toSlack <- &Msg{Source: "Client", Text: msg.M}
 			default:
 				log.Printf("unhandled: %v\n", msg)
 			}

@@ -5,19 +5,22 @@ import "log"
 import "github.com/ironiridis/tension"
 import "github.com/ironiridis/private"
 
+var slack *tension.Slack
+
 func main() {
-	s := tension.New(private.SlackTestBotToken())
-	r, err := s.AuthTest()
+	slack = tension.New(private.SlackTestBotToken())
+	r, err := slack.AuthTest()
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("connected to Slack: %+v", r)
 
 	// Launch websocket server, freak out if it ever returns
-	go func() {
+	func() {
 		err := wsserve()
 		panic(err)
 	}()
+
 	/*
 		for {
 			select {
