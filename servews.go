@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -39,21 +40,50 @@ func wsupgrader(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	rxch := make(chan *WSMsgClientEvent)
+	//txch, err := slackGetChannel()
+	if err != nil {
+		log.Printf("Slack returned an error during a WS setup: %v", err)
+		return
+	}
+
+	rxch := make(chan *WSMsgClientEvent, 2)
 	go wsreader(conn, rxch)
 	for {
 		select {
 		case <-time.After(time.Second * 10):
-			conn.WriteJSON(
+			err = conn.WriteJSON(
 				&WSMsgClientCommand{
 					S: "Server",
 					C: "system",
-					T: "Connection check"})
+					T: "timeout"})
 		case msg := <-rxch:
-			log.Printf("received: %+v\n", msg)
 			if msg == nil {
 				return
 			}
+			switch msg.E {
+			case "hello":
+				err = conn.WriteJSON(&WSMsgClientCommand{
+					S: "Server",
+					C: "system",
+					T: "hello"})
+			case "ping":
+				err = conn.WriteJSON(&WSMsgClientCommand{
+					S: "Server",
+					C: "system",
+					T: "pong"})
+			case "error":
+				err = fmt.Errorf("%s", msg.M)
+			case "typing":
+				log.Println("not handling typing event: unimplemented")
+			case "message":
+				log.Println("not handling message event: unimplemented")
+			default:
+				log.Printf("unhandled: %v\n", msg)
+			}
+		}
+		if err != nil {
+			log.Printf("wsupgrader error %v", err)
+			return
 		}
 	}
 }

@@ -1,34 +1,30 @@
 package main
 
-// This is going to be a very poorly factored golang app. MVP and all that, you know.
-
 import "log"
-import "time"
+
 import "github.com/ironiridis/tension"
 import "github.com/ironiridis/private"
 
 func main() {
-	err := wsserve()
-	if err != nil {
-		panic(err)
-	}
-
-	if true {
-		return
-	}
-	s := tension.New(private.SlackTestToken())
-	tx, rx, err := slackRTMWebsocket(s)
+	s := tension.New(private.SlackTestBotToken())
+	r, err := s.AuthTest()
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("connected, presumably")
+	log.Printf("connected to Slack: %+v", r)
 
-	for {
-		select {
-		case rxmsg := <-rx:
-			log.Printf("%s", rxmsg)
-		case <-time.After(time.Second * 10):
-			tx <- `{"id": 1, "type": "ping"}`
-		}
-	}
+	// Launch websocket server, freak out if it ever returns
+	go func() {
+		err := wsserve()
+		panic(err)
+	}()
+	/*
+		for {
+			select {
+			case rxmsg := <-rx:
+				log.Printf("%s", rxmsg)
+			case <-time.After(time.Second * 10):
+				tx <- `{"id": 1, "type": "ping"}`
+			}
+		}*/
 }
