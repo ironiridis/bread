@@ -8,25 +8,40 @@ import "github.com/ironiridis/private"
 var slackAPI *tension.Slack
 var slackBot *tension.Slack
 
+func checkerr(e error) {
+	if e != nil {
+		log.Fatal(e)
+	}
+}
+
 func main() {
+	slackAPI = tension.New(private.SlackTestAccessToken())
+	r, err := slackAPI.AuthTest()
+	checkerr(err)
+	log.Printf("api authed to Slack: %+v", r)
+
 	slackBot = tension.New(private.SlackTestBotToken())
-	r, err := slackBot.AuthTest()
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("bot connected to Slack: %+v", r)
-	slackAPI = tension.New(private.SlackTestToken())
-	r, err = slackAPI.AuthTest()
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("api connected to Slack: %+v", r)
+	r, err = slackBot.AuthTest()
+	checkerr(err)
+	log.Printf("bot authed to Slack: %+v", r)
+
+	rtmresult, err := slackBot.RTMStart(true, true)
+	checkerr(err)
+	log.Printf("bot rtm setup with Slack: %+v", rtmresult)
+
+	rtm, err := rtmresult.Dial()
+	checkerr(err)
+	log.Printf("bot rtm connected with Slack: %+v", rtm)
 
 	// Launch websocket server, freak out if it ever returns
-	func() {
+	go func() {
 		err := wsserve()
 		panic(err)
 	}()
+
+	for m := range rtm.Rx {
+		log.Println(m)
+	}
 
 	/*
 		for {
