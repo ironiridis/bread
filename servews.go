@@ -15,8 +15,8 @@ var upgrader = websocket.Upgrader{
 }
 
 type WSMsgClientEvent struct {
-	E string
-	M string `json:",omitempty"`
+	E string `json:"event"`
+	M string `json:"message,omitempty"`
 }
 
 type WSMsgClientCommand struct {
@@ -37,28 +37,36 @@ func wsupgrader(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
+	defer conn.Close()
 
 	rxch := make(chan *WSMsgClientEvent)
 	go wsreader(conn, rxch)
 	for {
 		select {
-		case <-time.After(time.Second * 5):
-			conn.WriteJSON(&WSMsgClientCommand{S: "Pinger", C: "event", T: "ping"})
+		case <-time.After(time.Second * 10):
+			conn.WriteJSON(
+				&WSMsgClientCommand{
+					S: "Server",
+					C: "system",
+					T: "Connection check"})
 		case msg := <-rxch:
 			log.Printf("received: %+v\n", msg)
+			if msg == nil {
+				return
+			}
 		}
 	}
 }
 
 func wsreader(conn *websocket.Conn, rxch chan *WSMsgClientEvent) {
+	defer close(rxch)
 	for {
 		msg := &WSMsgClientEvent{}
 		err := conn.ReadJSON(msg)
 		if err != nil {
-			msg.E = "wserror"
-			msg.M = err.Error()
-			rxch <- msg
-			close(rxch)
+			rxch <- &WSMsgClientEvent{E: "error", M: err.Error()}
+			return
 		}
+		rxch <- msg
 	}
 }
