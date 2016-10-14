@@ -25,6 +25,12 @@ type WSMsgClientCommand struct {
 	T string // text
 }
 
+func wsserve() (err error) {
+	http.HandleFunc("/breadws/mspace", wsupgrader)
+	err = http.ListenAndServe(":7188", nil)
+	return
+}
+
 func wsupgrader(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

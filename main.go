@@ -8,6 +8,14 @@ import "github.com/ironiridis/tension"
 import "github.com/ironiridis/private"
 
 func main() {
+	err := wsserve()
+	if err != nil {
+		panic(err)
+	}
+
+	if true {
+		return
+	}
 	s := tension.New(private.SlackTestToken())
 	tx, rx, err := slackRTMWebsocket(s)
 	if err != nil {
